@@ -32,6 +32,7 @@
 #include<unistd.h>
 #include<errno.h>
 #include <netdb.h>
+#include "common.h"
 
 
 #define SERVER_TCP_PORT		8005	// Default port
@@ -42,11 +43,16 @@ void connect_init(int *conn_sock, struct sockaddr_in *server, int port, char *ho
 
 int main (int argc, char **argv)
 {
-	int conn_sock, port, i;
+	int conn_sock, port, i, err;
     int maxfd;
 	struct sockaddr_in server;
-	char  *host;
+	char  *host, *bp;
     fd_set start, read;
+
+    // OpenSSL specific variables
+    SSL_CTX *ctx;
+    SSL *ssl;
+    BIO *sbio;
 
 	switch (argc)
 	{
@@ -63,12 +69,38 @@ int main (int argc, char **argv)
 			exit(1);
 	}
 
+    ctx = initialize_ctx(CERTIFICATE);
+    ssl = SSL_new (ctx);
+    sbio = BIO_new_socket (conn_sock, BIO_NOCLOSE);
+    SSL_set_bio (ssl, sbio, sbio);
+    int r;
+    if ((r= SSL_connect (ssl)) < 0) {
+
+        int errr =SSL_get_error(ssl, r);
+        printf("%d\n", errr);
+        berr_exit("SSL Connect Error!");
+    }
+    // Get the localhost CA
+    if(SSL_get_peer_certificate(ssl) != NULL)
+    {
+        if(SSL_get_verify_result (ssl) != X509_V_OK)
+        {
+            berr_exit("Could not verify peer certificate\n");
+            printf ("Note: Could not verify peer certificate\n");
+        }
+    } else
+    {
+        berr_exit("Could not get peer certificate\n");
+    }
     connect_init(&conn_sock,&server,port,host);
+
     FD_ZERO(&start);
     FD_ZERO(&read);
     FD_SET(0, &start);
     FD_SET(conn_sock, &start);
     maxfd = conn_sock;
+
+
     while(1)
     {
 
@@ -92,13 +124,17 @@ int main (int argc, char **argv)
                     }
                     else
                     {
-                        send(conn_sock,s_buff, strlen(s_buff),0);
+
+                        err = SSL_write (ssl, s_buff, BUFLEN);
+                        //send(conn_sock,s_buff, strlen(s_buff),0);
                     }
                 }
                 else
                 {
-                    bytes_rec =recv(conn_sock,r_buff,BUFLEN,0);
-                    r_buff[bytes_rec]='\0';
+                    bp = r_buff;
+                    SSL_read (ssl, bp, BUFLEN);
+                    //bytes_rec =recv(conn_sock,r_buff,BUFLEN,0);
+                    //r_buff[bytes_rec]='\0';
                     printf("%s\n",r_buff);
                     fflush(stdout);
                 }

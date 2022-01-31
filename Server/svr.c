@@ -41,9 +41,9 @@
 
 // Function Prototypes
 static void SystemFatal(const char* );
-void connection_init(int *sockfd, struct sockaddr_in *server, int port);
-void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd);
-void send_receive(fd_set *start, int sockfd, int maxfd, int i,struct sockaddr_in *client, SSL_CTX *ctx);
+void connection_init(int *sockfd, struct sockaddr_in *server, int port, SSL_CTX *ctx, SSL *ssl);
+void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx,SSL *ssl);
+void send_receive(fd_set *start, int sockfd, int maxfd, int i,struct sockaddr_in *client, SSL_CTX *ctx, SSL *ssl);
 
 static int  s_server_session_id_context = 1;
 
@@ -51,6 +51,7 @@ int main (int argc, char **argv)
 {
     fd_set start, read;
 	int i, maxi, port, maxfd, client[FD_SETSIZE];
+    SSL *clients[FD_SETSIZE];
 	int sockfd= 0;
     socklen_t client_len;
 	struct sockaddr_in server, client_addr;
@@ -59,7 +60,6 @@ int main (int argc, char **argv)
     // OpenSSL specific variables
     SSL_CTX *ctx;      // SSL context structure
     SSL *ssl;          // SSL structures
-    BIO *sbio = NULL;  // Initialize BIO Object
 
     switch(argc)
     {
@@ -77,11 +77,11 @@ int main (int argc, char **argv)
     SSL_CTX_set_session_id_context(ctx, (void*)&s_server_session_id_context, sizeof s_server_session_id_context);
     maxi	= -1;
     for (i = 0; i < FD_SETSIZE; i++)
-        client[i] = -1;
+        clients[i] = (SSL *) -1;
 
     FD_ZERO(&start);
     FD_ZERO(&read);
-    connection_init(&sockfd,&server,port);
+    connection_init(&sockfd,&server,port,ctx,ssl);
     FD_SET(sockfd, &start);
     maxfd = sockfd;
     while (1)
@@ -94,11 +94,11 @@ int main (int argc, char **argv)
             {
                 if(i == sockfd)
                 {
-                    new_connection(&start,&client_addr,&maxfd,sockfd);
+                    new_connection(&start,&client_addr,&maxfd,sockfd,ctx,ssl);
                 }
                 else
                 {
-                    send_receive(&start,sockfd,maxfd,i,&client_addr,&ctx);
+                    send_receive(&start,sockfd,maxfd,i,&client_addr,ctx,ssl);
                 }
             }
         }
@@ -113,7 +113,7 @@ static void SystemFatal (const char* message)
     exit (EXIT_FAILURE);
 }
 
-void connection_init(int *sockfd, struct sockaddr_in *server, int port)
+void connection_init(int *sockfd, struct sockaddr_in *server, int port, SSL_CTX *ctx, SSL *ssl)
 {
     if ((*sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
@@ -133,11 +133,17 @@ void connection_init(int *sockfd, struct sockaddr_in *server, int port)
     if(listen(*sockfd, LISTENQ)==-1){
         SystemFatal("listen");
     }
+    BIO *sbio = BIO_new_socket(*sockfd, BIO_NOCLOSE);
+    ssl = SSL_new (ctx);
+    SSL_set_bio (ssl, sbio, sbio);
+    int err = SSL_accept(ssl) <= 0;
+    if (err)
+        berr_exit ("SSL Accept Error");
     printf("Waiting on %ui port %i\n", server->sin_addr.s_addr, port);
     fflush(stdout);
 }
 
-void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd)
+void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx, SSL *ssl)
 {
     socklen_t client_len = sizeof(*client);
     int new_sd;
@@ -152,21 +158,24 @@ void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int s
             *maxfd = new_sd;	// for select
         }
     }
+    BIO *sbio = BIO_new_socket(new_sd, BIO_NOCLOSE);
+    ssl = SSL_new (ctx);
+    SSL_set_bio (ssl, sbio, sbio);
+    int err = SSL_accept(ssl) <= 0;
+    if (err)
+        berr_exit ("SSL Accept Error");
     printf(" Remote Address:  %s\n", inet_ntoa(client->sin_addr));
 }
 
-void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_in *client, SSL_CTX *ctx)
+void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_in *client, SSL_CTX *ctx, SSL *ssl)
 {
     int n, err,j;
     ssize_t bytes;
     char rec_buff[BUFLEN];
+
     BIO *sbio = BIO_new_socket(i, BIO_NOCLOSE);
-    SSL *ssl = SSL_new (ctx);
+    ssl = SSL_new (ctx);
     SSL_set_bio (ssl, sbio, sbio);
-
-    if (err = SSL_accept (ssl) <= 0)
-        berr_exit ("SSL Accept Error");
-
     // Read the client data
     n = SSL_read (ssl, rec_buff, BUFLEN);
     switch (SSL_get_error (ssl, n))
@@ -187,7 +196,7 @@ void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_i
     {
         printf(" Remote Address:  %s closed connection\n", inet_ntoa(client->sin_addr));
 
-    } else
+    } /*else
     {
         for(j=0;j<=maxfd;j++)
         {
@@ -213,7 +222,8 @@ void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_i
             SystemFatal("recv");
         close(i);
         FD_CLR(i, start);
-    } else
+    } */
+    else
     {
         for(j=0;j<=maxfd;j++)
         {
@@ -221,6 +231,8 @@ void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_i
             {
                 if(j != sockfd && j != i) {
                     sbio = BIO_new_socket(j, BIO_NOCLOSE);
+                    ssl = SSL_new (ctx);
+                    SSL_set_bio (ssl, sbio, sbio);
                     if(SSL_write (ssl, rec_buff, BUFLEN) == 0)
                     {
                         printf("perror");
