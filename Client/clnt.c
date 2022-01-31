@@ -71,6 +71,8 @@ int main (int argc, char **argv)
 
     ctx = initialize_ctx(CERTIFICATE);
     ssl = SSL_new (ctx);
+
+    connect_init(&conn_sock,&server,port,host);
     sbio = BIO_new_socket (conn_sock, BIO_NOCLOSE);
     SSL_set_bio (ssl, sbio, sbio);
     int r;
@@ -92,8 +94,6 @@ int main (int argc, char **argv)
     {
         berr_exit("Could not get peer certificate\n");
     }
-    connect_init(&conn_sock,&server,port,host);
-
     FD_ZERO(&start);
     FD_ZERO(&read);
     FD_SET(0, &start);
