@@ -42,7 +42,7 @@ rule C_EXECUTABLE_LINKER__Server_Debug
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = /etc/clion-2021.3.2/bin/cmake/linux/bin/cmake --regenerate-during-build -S"/root/Documents/8005/Assign 2/Server" -B"/root/Documents/8005/Assign 2/Server/cmake-build-debug"
+  command = /etc/clion-2021.3.2/bin/cmake/linux/bin/cmake --regenerate-during-build -S/root/Documents/8005/SSL_SELECT_CHAT/Server -B/root/Documents/8005/SSL_SELECT_CHAT/Server/cmake-build-debug
   description = Re-running CMake...
   generator = 1
 

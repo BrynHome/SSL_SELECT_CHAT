@@ -43,7 +43,7 @@
 static void SystemFatal(const char* );
 void connection_init(int *sockfd, struct sockaddr_in *server, int port);
 void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd);
-void send_receive(fd_set *start, int sockfd, int maxfd, int i,struct sockaddr_in *client);
+void send_receive(fd_set *start, int sockfd, int maxfd, int i,struct sockaddr_in *client, SSL_CTX *ctx);
 
 static int  s_server_session_id_context = 1;
 
@@ -73,8 +73,8 @@ int main (int argc, char **argv)
             fprintf(stderr, "Usage: %s [port]\n", argv[0]);
             exit(1);
     }
-    //ctx = initialize_ctx(KEYFILE,CERTIFICATE);
-    //SSL_CTX_set_session_id_context(ctx, (void*)&s_server_session_id_context, sizeof s_server_session_id_context);
+    ctx = initialize_ctx(KEYFILE,CERTIFICATE);
+    SSL_CTX_set_session_id_context(ctx, (void*)&s_server_session_id_context, sizeof s_server_session_id_context);
     maxi	= -1;
     for (i = 0; i < FD_SETSIZE; i++)
         client[i] = -1;
@@ -98,7 +98,7 @@ int main (int argc, char **argv)
                 }
                 else
                 {
-                    send_receive(&start,sockfd,maxfd,i,&client_addr);
+                    send_receive(&start,sockfd,maxfd,i,&client_addr,&ctx);
                 }
             }
         }
@@ -155,11 +155,54 @@ void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int s
     printf(" Remote Address:  %s\n", inet_ntoa(client->sin_addr));
 }
 
-void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_in *client)
+void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_in *client, SSL_CTX *ctx)
 {
-    int j;
+    int n, err,j;
     ssize_t bytes;
     char rec_buff[BUFLEN];
+    BIO *sbio = BIO_new_socket(i, BIO_NOCLOSE);
+    SSL *ssl = SSL_new (ctx);
+    SSL_set_bio (ssl, sbio, sbio);
+
+    if (err = SSL_accept (ssl) <= 0)
+        berr_exit ("SSL Accept Error");
+
+    // Read the client data
+    n = SSL_read (ssl, rec_buff, BUFLEN);
+    switch (SSL_get_error (ssl, n))
+    {
+        case SSL_ERROR_NONE:
+            bytes = n;
+            break;
+        case SSL_ERROR_ZERO_RETURN: //may need to edit
+            SSL_shutdown (ssl);
+            SSL_free (ssl);
+            FD_CLR(i,start);
+            berr_exit ("SSL Zero Return");
+            break;
+        default:
+            berr_exit("SSL read problem");
+    }
+    if(bytes ==0)
+    {
+        printf(" Remote Address:  %s closed connection\n", inet_ntoa(client->sin_addr));
+
+    } else
+    {
+        for(j=0;j<=maxfd;j++)
+        {
+            if(FD_ISSET(j,start))
+            {
+                if(j != sockfd && j != i) {
+
+                    if(send(j,rec_buff,bytes,0) == -1)
+                    {
+                        printf("perror");
+                    }
+                }
+            }
+        }
+    }
     if((bytes=recv(i,rec_buff,BUFLEN,0)) <= 0)
     {
         if(bytes ==0)
@@ -177,7 +220,8 @@ void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_i
             if(FD_ISSET(j,start))
             {
                 if(j != sockfd && j != i) {
-                    if(send(j,rec_buff,bytes,0) == -1)
+                    sbio = BIO_new_socket(j, BIO_NOCLOSE);
+                    if(SSL_write (ssl, rec_buff, BUFLEN) == 0)
                     {
                         printf("perror");
                     }

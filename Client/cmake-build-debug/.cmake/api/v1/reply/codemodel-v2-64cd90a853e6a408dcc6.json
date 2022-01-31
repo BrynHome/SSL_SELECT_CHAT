@@ -49,8 +49,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/root/Documents/8005/Assign 2/Client/cmake-build-debug",
-		"source" : "/root/Documents/8005/Assign 2/Client"
+		"build" : "/root/Documents/8005/SSL_SELECT_CHAT/Client/cmake-build-debug",
+		"source" : "/root/Documents/8005/SSL_SELECT_CHAT/Client"
 	},
 	"version" : 
 	{

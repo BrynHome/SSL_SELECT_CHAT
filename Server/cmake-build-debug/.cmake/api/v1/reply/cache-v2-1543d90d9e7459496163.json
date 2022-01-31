@@ -55,7 +55,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/root/Documents/8005/Assign 2/Client/cmake-build-debug"
+			"value" : "/root/Documents/8005/SSL_SELECT_CHAT/Server/cmake-build-debug"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -451,7 +451,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/root/Documents/8005/Assign 2/Client"
+			"value" : "/root/Documents/8005/SSL_SELECT_CHAT/Server"
 		},
 		{
 			"name" : "CMAKE_INSTALL_PREFIX",
@@ -691,7 +691,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "Client"
+			"value" : "Server"
 		},
 		{
 			"name" : "CMAKE_RANLIB",
@@ -974,7 +974,7 @@
 			"value" : "FALSE"
 		},
 		{
-			"name" : "Client_BINARY_DIR",
+			"name" : "Server_BINARY_DIR",
 			"properties" : 
 			[
 				{
@@ -983,10 +983,10 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/root/Documents/8005/Assign 2/Client/cmake-build-debug"
+			"value" : "/root/Documents/8005/SSL_SELECT_CHAT/Server/cmake-build-debug"
 		},
 		{
-			"name" : "Client_IS_TOP_LEVEL",
+			"name" : "Server_IS_TOP_LEVEL",
 			"properties" : 
 			[
 				{
@@ -998,7 +998,7 @@
 			"value" : "ON"
 		},
 		{
-			"name" : "Client_SOURCE_DIR",
+			"name" : "Server_SOURCE_DIR",
 			"properties" : 
 			[
 				{
@@ -1007,7 +1007,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/root/Documents/8005/Assign 2/Client"
+			"value" : "/root/Documents/8005/SSL_SELECT_CHAT/Server"
 		}
 	],
 	"kind" : "cache",

@@ -1,0 +1,16 @@
+#make
+LD=-lssl -l crypto
+
+CC=gcc
+
+sserver: svr.o common.o
+	$(CC) svr.o common.o -o sserver $(LD)
+
+clean:
+	rm -f *.o core.* sserver
+
+svr.o: svr.c
+	gcc -O -c svr.c
+
+common.o: common.c
+	gcc -O -c common.c

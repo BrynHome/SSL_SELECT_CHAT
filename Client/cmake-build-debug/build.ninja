@@ -39,13 +39,13 @@ include CMakeFiles/rules.ninja
 #############################################
 # Logical path to working directory; prefix for absolute paths.
 
-cmake_ninja_workdir = /root/Documents/8005/Assign$ 2/Client/cmake-build-debug/
+cmake_ninja_workdir = /root/Documents/8005/SSL_SELECT_CHAT/Client/cmake-build-debug/
 
 #############################################
 # Utility command for rebuild_cache
 
 build CMakeFiles/rebuild_cache.util: CUSTOM_COMMAND
-  COMMAND = cd "/root/Documents/8005/Assign 2/Client/cmake-build-debug" && /etc/clion-2021.3.2/bin/cmake/linux/bin/cmake --regenerate-during-build -S"/root/Documents/8005/Assign 2/Client" -B"/root/Documents/8005/Assign 2/Client/cmake-build-debug"
+  COMMAND = cd /root/Documents/8005/SSL_SELECT_CHAT/Client/cmake-build-debug && /etc/clion-2021.3.2/bin/cmake/linux/bin/cmake --regenerate-during-build -S/root/Documents/8005/SSL_SELECT_CHAT/Client -B/root/Documents/8005/SSL_SELECT_CHAT/Client/cmake-build-debug
   DESC = Running CMake to regenerate build system...
   pool = console
   restat = 1
@@ -57,7 +57,7 @@ build rebuild_cache: phony CMakeFiles/rebuild_cache.util
 # Utility command for edit_cache
 
 build CMakeFiles/edit_cache.util: CUSTOM_COMMAND
-  COMMAND = cd "/root/Documents/8005/Assign 2/Client/cmake-build-debug" && /etc/clion-2021.3.2/bin/cmake/linux/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
+  COMMAND = cd /root/Documents/8005/SSL_SELECT_CHAT/Client/cmake-build-debug && /etc/clion-2021.3.2/bin/cmake/linux/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
   DESC = No interactive CMake dialog available...
   restat = 1
 
@@ -72,7 +72,7 @@ build edit_cache: phony CMakeFiles/edit_cache.util
 
 build cmake_object_order_depends_target_Client: phony || CMakeFiles/Client.dir
 
-build CMakeFiles/Client.dir/clnt.c.o: C_COMPILER__Client_Debug /root/Documents/8005/Assign$ 2/Client/clnt.c || cmake_object_order_depends_target_Client
+build CMakeFiles/Client.dir/clnt.c.o: C_COMPILER__Client_Debug /root/Documents/8005/SSL_SELECT_CHAT/Client/clnt.c || cmake_object_order_depends_target_Client
   DEP_FILE = CMakeFiles/Client.dir/clnt.c.o.d
   FLAGS = -g -std=gnu11
   OBJECT_DIR = CMakeFiles/Client.dir
@@ -106,7 +106,7 @@ build Client: C_EXECUTABLE_LINKER__Client_Debug CMakeFiles/Client.dir/clnt.c.o
 # =============================================================================
 
 #############################################
-# Folder: /root/Documents/8005/Assign 2/Client/cmake-build-debug
+# Folder: /root/Documents/8005/SSL_SELECT_CHAT/Client/cmake-build-debug
 
 build all: phony Client
 
