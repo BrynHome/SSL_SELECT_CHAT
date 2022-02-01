@@ -41,9 +41,9 @@
 
 // Function Prototypes
 static void SystemFatal(const char* );
-void connection_init(int *sockfd, struct sockaddr_in *server, int port, SSL_CTX *ctx, SSL *ssl);
-void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx,SSL *ssl);
-void send_receive(fd_set *start, int sockfd, int maxfd, int i,struct sockaddr_in *client, SSL_CTX *ctx, SSL *ssl);
+void connection_init(int *sockfd, struct sockaddr_in *server, int port);
+void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx,SSL *clients[]);
+void send_receive(fd_set *start, int sockfd, int maxfd, int i,struct sockaddr_in *client, SSL_CTX *ctx, SSL *clients[]);
 
 static int  s_server_session_id_context = 1;
 
@@ -59,7 +59,7 @@ int main (int argc, char **argv)
 
     // OpenSSL specific variables
     SSL_CTX *ctx;      // SSL context structure
-    SSL *ssl;          // SSL structures
+
 
     switch(argc)
     {
@@ -77,11 +77,11 @@ int main (int argc, char **argv)
     SSL_CTX_set_session_id_context(ctx, (void*)&s_server_session_id_context, sizeof s_server_session_id_context);
     maxi	= -1;
     for (i = 0; i < FD_SETSIZE; i++)
-        clients[i] = (SSL *) -1;
+        clients[i] = NULL;
 
     FD_ZERO(&start);
     FD_ZERO(&read);
-    connection_init(&sockfd,&server,port,ctx,ssl);
+    connection_init(&sockfd,&server,port);
     FD_SET(sockfd, &start);
     maxfd = sockfd;
     while (1)
@@ -94,11 +94,11 @@ int main (int argc, char **argv)
             {
                 if(i == sockfd)
                 {
-                    new_connection(&start,&client_addr,&maxfd,sockfd,ctx,ssl);
+                    new_connection(&start,&client_addr,&maxfd,sockfd,ctx,clients);
                 }
                 else
                 {
-                    send_receive(&start,sockfd,maxfd,i,&client_addr,ctx,ssl);
+                    send_receive(&start,sockfd,maxfd,i,&client_addr,ctx,clients);
                 }
             }
         }
@@ -113,7 +113,7 @@ static void SystemFatal (const char* message)
     exit (EXIT_FAILURE);
 }
 
-void connection_init(int *sockfd, struct sockaddr_in *server, int port, SSL_CTX *ctx, SSL *ssl)
+void connection_init(int *sockfd, struct sockaddr_in *server, int port)
 {
     if ((*sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
@@ -133,20 +133,15 @@ void connection_init(int *sockfd, struct sockaddr_in *server, int port, SSL_CTX 
     if(listen(*sockfd, LISTENQ)==-1){
         SystemFatal("listen");
     }
-    BIO *sbio = BIO_new_socket(*sockfd, BIO_NOCLOSE);
-    ssl = SSL_new (ctx);
-    SSL_set_bio (ssl, sbio, sbio);
-    int err = SSL_accept(ssl) <= 0;
-    if (err)
-        berr_exit ("SSL Accept Error");
+
     printf("Waiting on %ui port %i\n", server->sin_addr.s_addr, port);
     fflush(stdout);
 }
 
-void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx, SSL *ssl)
+void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx, SSL *clients[])
 {
     socklen_t client_len = sizeof(*client);
-    int new_sd;
+    int new_sd,i;
     if ((new_sd = accept(sockfd, (struct sockaddr *)client, &client_len)) == -1)
     {
         SystemFatal("accept error");
@@ -159,33 +154,36 @@ void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int s
         }
     }
     BIO *sbio = BIO_new_socket(new_sd, BIO_NOCLOSE);
-    ssl = SSL_new (ctx);
+    SSL *ssl = SSL_new (ctx);
     SSL_set_bio (ssl, sbio, sbio);
     int err = SSL_accept(ssl) <= 0;
     if (err)
         berr_exit ("SSL Accept Error");
+    for(i = 0;i<FD_SETSIZE;i++){
+        if (!clients[i]){
+            clients[i] = ssl;
+        }
+    }
     printf(" Remote Address:  %s\n", inet_ntoa(client->sin_addr));
 }
 
-void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_in *client, SSL_CTX *ctx, SSL *ssl)
+void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_in *client, SSL_CTX *ctx, SSL *clients[])
 {
     int n, err,j;
     ssize_t bytes;
     char rec_buff[BUFLEN];
 
-    BIO *sbio = BIO_new_socket(i, BIO_NOCLOSE);
-    ssl = SSL_new (ctx);
-    SSL_set_bio (ssl, sbio, sbio);
+
     // Read the client data
-    n = SSL_read (ssl, rec_buff, BUFLEN);
-    switch (SSL_get_error (ssl, n))
+    n = SSL_read (clients[i], rec_buff, BUFLEN);
+    switch (SSL_get_error (clients[i], n))
     {
         case SSL_ERROR_NONE:
             bytes = n;
             break;
         case SSL_ERROR_ZERO_RETURN: //may need to edit
-            SSL_shutdown (ssl);
-            SSL_free (ssl);
+            SSL_shutdown (clients[i]);
+            SSL_free (clients[i]);
             FD_CLR(i,start);
             berr_exit ("SSL Zero Return");
             break;
@@ -230,10 +228,8 @@ void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_i
             if(FD_ISSET(j,start))
             {
                 if(j != sockfd && j != i) {
-                    sbio = BIO_new_socket(j, BIO_NOCLOSE);
-                    ssl = SSL_new (ctx);
-                    SSL_set_bio (ssl, sbio, sbio);
-                    if(SSL_write (ssl, rec_buff, BUFLEN) == 0)
+
+                    if(SSL_write (clients[j], rec_buff, BUFLEN) == 0)
                     {
                         printf("perror");
                     }
