@@ -1,5 +1,4 @@
 /etc/clion-2021.3.2/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/etc/clion-2021.3.2/bin/ninja/linux/ninja -G Ninja /root/Documents/8005/SSL_SELECT_CHAT/Client
--- Found OpenSSL: /usr/lib64/libcrypto.so (found version "1.1.1l")  
 -- Configuring done
 -- Generating done
 -- Build files have been written to: /root/Documents/8005/SSL_SELECT_CHAT/Client/cmake-build-debug

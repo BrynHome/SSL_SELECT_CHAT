@@ -162,6 +162,7 @@ void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int s
     for(i = 0;i<FD_SETSIZE;i++){
         if (!clients[i]){
             clients[i] = ssl;
+            break;
         }
     }
     printf(" Remote Address:  %s\n", inet_ntoa(client->sin_addr));

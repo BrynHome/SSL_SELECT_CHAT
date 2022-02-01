@@ -100,7 +100,7 @@ int main (int argc, char **argv)
     FD_SET(0, &start);
     FD_SET(conn_sock, &start);
     maxfd = conn_sock;
-
+    fflush(stdout);
     //char t_buff[BUFLEN];
     //fgets(t_buff,BUFLEN,stdin);
     //SSL_write(ssl, t_buff, BUFLEN);
