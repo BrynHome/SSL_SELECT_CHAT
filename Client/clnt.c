@@ -88,7 +88,6 @@ int main (int argc, char **argv)
     {
         if((res =SSL_get_verify_result (ssl)) != X509_V_OK)
         {
-            X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY
             //berr_exit("Could not verify peer certificate\n");
             printf ("Note: Could not verify peer certificate: %ld \n", res);
         }
@@ -102,7 +101,9 @@ int main (int argc, char **argv)
     FD_SET(conn_sock, &start);
     maxfd = conn_sock;
 
-
+    //char t_buff[BUFLEN];
+    //fgets(t_buff,BUFLEN,stdin);
+    //SSL_write(ssl, t_buff, BUFLEN);
     while(1)
     {
 
