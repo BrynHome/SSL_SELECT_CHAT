@@ -1,5 +1,5 @@
 # make for client
-LD=-lssl -lcrypto
+LD=-lssl -lcrypto -lpthread
 
 CC=gcc
 
