@@ -37,16 +37,37 @@
 
 #define SERVER_TCP_PORT		8005	// Default port
 #define BUFLEN			  1024  	// Buffer length
+static int  s_server_session_id_context = 1;
 #define STDIN               0   // Standard input file descriptor
 void connect_init(int *conn_sock, struct sockaddr_in *server, int port, char *host);
 
+void * doRecieving(void * sockID){
 
-int main (int argc, char **argv)
-{
-	int conn_sock, port, i, err;
+    SSL *ssl = (SSL *) sockID;
+    char *bp;
+    struct timeval timeout;
+    int rec, count = 0;
+    while(1) {
+
+        char r_buff[BUFLEN];
+        bp = r_buff;
+        SSL_read(ssl, bp, BUFLEN);
+        printf("%s\n", r_buff);
+        fflush(stdout);
+    }
+
+
+
+
+
+}
+
+
+int main (int argc, char **argv) {
+    int conn_sock, port, i, err;
     int maxfd;
-	struct sockaddr_in server;
-	char  *host, *bp;
+    struct sockaddr_in server;
+    char *host;
     fd_set start, read;
 
     // OpenSSL specific variables
@@ -54,96 +75,79 @@ int main (int argc, char **argv)
     SSL *ssl;
     BIO *sbio;
 
-	switch (argc)
-	{
-		case 2:
-			host =	argv[1];	// Host name
-			port =	SERVER_TCP_PORT;
-		break;
-		case 3:
-			host =	argv[1];
-			port =	atoi(argv[2]);	// User specified port
-		break;
-		default:
-			fprintf(stderr, "Usage: %s host [port]\n", argv[0]);
-			exit(1);
-	}
+    switch (argc) {
+        case 2:
+            host = argv[1];    // Host name
+            port = SERVER_TCP_PORT;
+            break;
+        case 3:
+            host = argv[1];
+            port = atoi(argv[2]);    // User specified port
+            break;
+        default:
+            fprintf(stderr, "Usage: %s host [port]\n", argv[0]);
+            exit(1);
+    }
 
     ctx = initialize_ctx(CERTIFICATE);
-    ssl = SSL_new (ctx);
+    SSL_CTX_set_session_id_context(ctx, (void*)&s_server_session_id_context, sizeof s_server_session_id_context);
+    ssl = SSL_new(ctx);
 
-    connect_init(&conn_sock,&server,port,host);
-    sbio = BIO_new_socket (conn_sock, BIO_NOCLOSE);
-    SSL_set_bio (ssl, sbio, sbio);
+
+
+    connect_init(&conn_sock, &server, port, host);
+    maxfd = conn_sock;
+    SSL_set_mode(ssl, SSL_MODE_AUTO_RETRY);
+    sbio = BIO_new_socket(conn_sock, BIO_CLOSE);
+    //BIO_set_nbio(sbio, 0);
+    SSL_set_bio(ssl, sbio, sbio);
     int r;
-    if ((r= SSL_connect (ssl)) < 0) {
+    if ((r = SSL_connect(ssl)) < 0) {
 
-        int errr =SSL_get_error(ssl, r);
+        int errr = SSL_get_error(ssl, r);
         printf("%d\n", errr);
         berr_exit("SSL Connect Error!");
     }
-    // Get the localhost CA
+
     long res;
-    if(SSL_get_peer_certificate(ssl) != NULL)
-    {
-        if((res =SSL_get_verify_result (ssl)) != X509_V_OK)
-        {
+    if (SSL_get_peer_certificate(ssl) != NULL) {
+        if ((res = SSL_get_verify_result(ssl)) != X509_V_OK) {
             //berr_exit("Could not verify peer certificate\n");
-            printf ("Note: Could not verify peer certificate: %ld \n", res);
+            printf("Note: Could not verify peer certificate: %ld \n", res);
         }
-    } else
-    {
+    } else {
         berr_exit("Could not get peer certificate\n");
     }
-    FD_ZERO(&start);
-    FD_ZERO(&read);
-    FD_SET(0, &start);
-    FD_SET(conn_sock, &start);
-    maxfd = conn_sock;
-    fflush(stdout);
+    pthread_t thread;
+    pthread_create(&thread, NULL, doRecieving, ssl);
+
+
+
+
     //char t_buff[BUFLEN];
     //fgets(t_buff,BUFLEN,stdin);
     //SSL_write(ssl, t_buff, BUFLEN);
-    while(1)
-    {
+    int te = 1;
+    while (1) {
 
-        read = start;
-        select(maxfd +1, &read, NULL, NULL, NULL);
-        for(i = 0; i <= maxfd; i++)
-        {
-            if(FD_ISSET(i,&read))
-            {
-                char s_buff[BUFLEN];
-                char r_buff[BUFLEN];
-                ssize_t bytes_rec;
-                if(i == 0)
-                {
-                    fgets(s_buff,BUFLEN,stdin);
-                    if(strcmp(s_buff,"exit\n")==0)
-                    {
-                        printf("Thank you for using Bryan's chat!\n");
-                        close (conn_sock);
-                        exit(0);
-                    }
-                    else
-                    {
 
-                        err = SSL_write (ssl, s_buff, BUFLEN);
-                        //send(conn_sock,s_buff, strlen(s_buff),0);
-                    }
-                }
-                else
-                {
-                    bp = r_buff;
-                    SSL_read (ssl, bp, BUFLEN);
-                    //bytes_rec =recv(conn_sock,r_buff,BUFLEN,0);
-                    //r_buff[bytes_rec]='\0';
-                    printf("%s\n",r_buff);
-                    fflush(stdout);
-                }
+            char s_buff[BUFLEN];
+
+
+            fgets(s_buff, BUFLEN, stdin);
+            if (strcmp(s_buff, "exit\n") == 0) {
+                printf("Thank you for using Bryan's chat!\n");
+                close(conn_sock);
+                exit(0);
             }
+
+
+            err = SSL_write(ssl, s_buff, BUFLEN);
+            //send(conn_sock,s_buff, strlen(s_buff),0);
         }
-    }
+
+
+
     printf("Client Closed\n");
 	return (0);
 }

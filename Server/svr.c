@@ -42,8 +42,8 @@
 // Function Prototypes
 static void SystemFatal(const char* );
 void connection_init(int *sockfd, struct sockaddr_in *server, int port);
-void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx,SSL *clients[]);
-void send_receive(fd_set *start, int sockfd, int maxfd, int i,struct sockaddr_in *client, SSL_CTX *ctx, SSL *clients[]);
+void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx,SSL *clients[], int c[], int *maxi);
+void send_receive(fd_set *start, int sockfd, int *maxfd, int i,struct sockaddr_in *client, SSL *clients[], int c[],int *maxi,SSL *ssl);
 
 static int  s_server_session_id_context = 1;
 
@@ -53,6 +53,7 @@ int main (int argc, char **argv)
 	int i, maxi, port, maxfd, client[FD_SETSIZE];
     SSL *clients[FD_SETSIZE];
 	int sockfd= 0;
+    int loop_sock;
     socklen_t client_len;
 	struct sockaddr_in server, client_addr;
    	ssize_t n;
@@ -77,31 +78,40 @@ int main (int argc, char **argv)
     SSL_CTX_set_session_id_context(ctx, (void*)&s_server_session_id_context, sizeof s_server_session_id_context);
     maxi	= -1;
     for (i = 0; i < FD_SETSIZE; i++)
-        clients[i] = NULL;
+        clients[i] = NULL; client[i] = -1;
+
 
     FD_ZERO(&start);
     FD_ZERO(&read);
     connection_init(&sockfd,&server,port);
     FD_SET(sockfd, &start);
     maxfd = sockfd;
+    maxi = -1;
     while (1)
     {
         read = start;
         select(maxfd+1,&read,NULL,NULL,NULL);
-        for(i=0;i<=maxfd;i++)
-        {
-            if(FD_ISSET(i,&read))
+
+            if(FD_ISSET(sockfd,&read))
             {
-                if(i == sockfd)
+
+                    new_connection(&start, &client_addr, &maxfd, sockfd, ctx, clients, client, &maxi);
+
+
+            }else
+            {
+                for (i = 0; i <= maxi; i++)	// if not a new connection, check all clients for data
                 {
-                    new_connection(&start,&client_addr,&maxfd,sockfd,ctx,clients);
-                }
-                else
-                {
-                    send_receive(&start,sockfd,maxfd,i,&client_addr,ctx,clients);
+                    if ((loop_sock = client[i])<0)
+                        continue;
+                    if(FD_ISSET(loop_sock, &read))
+                    {
+                        send_receive(&start, sockfd, &maxfd, i, &client_addr, clients, client,&maxi, clients[i]);
+                    }
+
                 }
             }
-        }
+
     }
 	return(0);
 }
@@ -138,37 +148,46 @@ void connection_init(int *sockfd, struct sockaddr_in *server, int port)
     fflush(stdout);
 }
 
-void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx, SSL *clients[])
+void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx, SSL *clients[], int c[], int *maxi)
 {
     socklen_t client_len = sizeof(*client);
     int new_sd,i;
     if ((new_sd = accept(sockfd, (struct sockaddr *)client, &client_len)) == -1)
     {
         SystemFatal("accept error");
-    } else
-    {
-        FD_SET(new_sd, start);
-        if (new_sd > *maxfd)
-        {
-            *maxfd = new_sd;	// for select
-        }
     }
+
     BIO *sbio = BIO_new_socket(new_sd, BIO_NOCLOSE);
     SSL *ssl = SSL_new (ctx);
     SSL_set_bio (ssl, sbio, sbio);
     int err = SSL_accept(ssl) <= 0;
     if (err)
         berr_exit ("SSL Accept Error");
+
     for(i = 0;i<FD_SETSIZE;i++){
-        if (!clients[i]){
+        if (!clients[i] && c[i] != -1){
             clients[i] = ssl;
+            c[i] = new_sd;
             break;
         }
     }
+    if(i == FD_SETSIZE){
+        printf("too many clients");
+        exit(1);
+    }
+    FD_SET(new_sd, start);
+    if (new_sd > *maxfd)
+    {
+        *maxfd = new_sd;	// for select
+    }
+    if (i > *maxi)
+        *maxi = i;	// new max index in client[] array
+
     printf(" Remote Address:  %s\n", inet_ntoa(client->sin_addr));
+
 }
 
-void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_in *client, SSL_CTX *ctx, SSL *clients[])
+void send_receive(fd_set *start, int sockfd, int *maxfd, int i, struct sockaddr_in *client,  SSL *clients[], int c[], int *maxi, SSL *ssl)
 {
     int n, err,j;
     ssize_t bytes;
@@ -176,27 +195,41 @@ void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_i
 
 
     // Read the client data
-    n = SSL_read (clients[i], rec_buff, BUFLEN);
+    n = SSL_read (ssl, rec_buff, BUFLEN);
     printf("%s", rec_buff);
-    switch (SSL_get_error (clients[i], n))
+    switch (SSL_get_error (ssl, n))
     {
         case SSL_ERROR_NONE:
             bytes = n;
             break;
         case SSL_ERROR_ZERO_RETURN: //may need to edit
-            SSL_shutdown (clients[i]);
-            SSL_free (clients[i]);
+            SSL_shutdown (ssl);
+            SSL_free (ssl);
             FD_CLR(i,start);
             berr_exit ("SSL Zero Return");
             break;
         default:
-            berr_exit("SSL read problem");
-    }
-    if(bytes ==0)
-    {
-        printf(" Remote Address:  %s closed connection\n", inet_ntoa(client->sin_addr));
+            bytes = n;
+            if(bytes ==-1)
+            {
+                //SSL_free (ssl);
+                clients[i] = NULL;
+                c[i] = -1;
+                FD_CLR(i,start);
+                //(*maxfd)--;
 
-    } /*else
+                break;
+            } else{
+                clients[i] = NULL;
+                c[i] = -1;
+                FD_CLR(i,start);
+                printf(" Remote Address:  %s closed connection\n", inet_ntoa(client->sin_addr));
+                //berr_exit("SSL read problem");
+            }
+
+
+    }
+     /*else
     {
         for(j=0;j<=maxfd;j++)
         {
@@ -223,13 +256,17 @@ void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_i
         close(i);
         FD_CLR(i, start);
     } */
-    else
-    {
-        for(j=0;j<=maxfd;j++)
+    if(bytes ==-1) {
+        printf(" Remote Address:  %s closed connection\n", inet_ntoa(client->sin_addr));
+    }
+    else {
+        int temp = (*maxi);
+        for(j=0;j<=temp;j++)
         {
-            if(FD_ISSET(j,start))
+
+            if(FD_ISSET(c[j],start))
             {
-                if(j != sockfd && j != i) {
+                if(c[j] != sockfd && j != i) {
 
                     if(SSL_write (clients[j], rec_buff, BUFLEN) == 0)
                     {
@@ -238,7 +275,11 @@ void send_receive(fd_set *start, int sockfd, int maxfd, int i, struct sockaddr_i
                 }
             }
         }
+
     }
+
+
+
 }
 
 

@@ -192,3 +192,11 @@ Parsed C implicit link information from above output:
   implicit fwks: []
 
 
+Determining if the include file pthread.h exists passed with the following output:
+Change Dir: /root/Documents/8005/SSL_SELECT_CHAT/Client/cmake-build-debug/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/etc/clion-2021.3.2/bin/ninja/linux/ninja cmTC_3f8ca && [1/2] Building C object CMakeFiles/cmTC_3f8ca.dir/CheckIncludeFile.c.o
+[2/2] Linking C executable cmTC_3f8ca
+
+
+
