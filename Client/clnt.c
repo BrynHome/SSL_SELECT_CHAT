@@ -74,7 +74,10 @@ int main (int argc, char **argv) {
     SSL_CTX *ctx;
     SSL *ssl;
     BIO *sbio;
+    char name[40];
+    gethostname(name,40);
 
+    strcat(name,": ");
     switch (argc) {
         case 2:
             host = argv[1];    // Host name
@@ -132,7 +135,9 @@ int main (int argc, char **argv) {
 
 
             char s_buff[BUFLEN];
-
+            //
+            char s_send[BUFLEN];
+            strcpy(s_send, name);
 
             fgets(s_buff, BUFLEN, stdin);
             if (strcmp(s_buff, "exit\n") == 0) {
@@ -140,9 +145,9 @@ int main (int argc, char **argv) {
                 close(conn_sock);
                 exit(0);
             }
+            strcat(s_send,s_buff);
 
-
-            err = SSL_write(ssl, s_buff, BUFLEN);
+            err = SSL_write(ssl, s_send, BUFLEN);
             //send(conn_sock,s_buff, strlen(s_buff),0);
         }
 

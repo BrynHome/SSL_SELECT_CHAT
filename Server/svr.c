@@ -196,7 +196,7 @@ void send_receive(fd_set *start, int sockfd, int *maxfd, int i, struct sockaddr_
 
     // Read the client data
     n = SSL_read (ssl, rec_buff, BUFLEN);
-    printf("%s", rec_buff);
+    //printf("%s", rec_buff);
     switch (SSL_get_error (ssl, n))
     {
         case SSL_ERROR_NONE:
