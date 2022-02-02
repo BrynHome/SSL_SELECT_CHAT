@@ -144,7 +144,7 @@ void connection_init(int *sockfd, struct sockaddr_in *server, int port)
         SystemFatal("listen");
     }
 
-    printf("Waiting on %ui port %i\n", server->sin_addr.s_addr, port);
+    printf("Waiting on port %i\n",  port);
     fflush(stdout);
 }
 
@@ -183,7 +183,7 @@ void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int s
     if (i > *maxi)
         *maxi = i;	// new max index in client[] array
 
-    printf(" Remote Address:  %s\n", inet_ntoa(client->sin_addr));
+    printf(" Remote Address: %s\n", inet_ntoa(client->sin_addr));
 
 }
 
@@ -261,6 +261,10 @@ void send_receive(fd_set *start, int sockfd, int *maxfd, int i, struct sockaddr_
     }
     else {
         int temp = (*maxi);
+        char str[INET_ADDRSTRLEN+BUFLEN];
+        inet_ntop(AF_INET, &client->sin_addr,str,INET_ADDRSTRLEN);
+        strcat(str, ": ");
+        strcat(str, rec_buff);
         for(j=0;j<=temp;j++)
         {
 
@@ -268,7 +272,7 @@ void send_receive(fd_set *start, int sockfd, int *maxfd, int i, struct sockaddr_
             {
                 if(c[j] != sockfd && j != i) {
 
-                    if(SSL_write (clients[j], rec_buff, BUFLEN) == 0)
+                    if(SSL_write (clients[j], str, BUFLEN) == 0)
                     {
                         printf("perror");
                     }

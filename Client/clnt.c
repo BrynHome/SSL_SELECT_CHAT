@@ -1,28 +1,4 @@
-/*---------------------------------------------------------------------------------------
---	SOURCE FILE:		tcp_clnt.c - A simple TCP client program.
---
---	PROGRAM:		muxc
---
---	FUNCTIONS:		Berkeley Socket API
---
---	DATE:			January 2, 2021
---
---	REVISIONS:		(Date and Description)
---				
---	DESIGNERS:		Aman Abdulla
---
---	PROGRAMMERS:	Aman Abdulla
---
---	NOTES:
---	The program will establish a TCP connection to a user specifed server.
--- The server can be specified using a fully qualified domain name or an
---	IP address. After the connection has been established the user will be
--- prompted for data. The data string is then sent to the server and the
--- response (echo) back from the server is displayed.
---
 
--- Compile: gcc -Wall -ggdb -o muxc mux_clnt.c
----------------------------------------------------------------------------------------*/
 #include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
@@ -123,14 +99,6 @@ int main (int argc, char **argv) {
     }
     pthread_t thread;
     pthread_create(&thread, NULL, doRecieving, ssl);
-
-
-
-
-    //char t_buff[BUFLEN];
-    //fgets(t_buff,BUFLEN,stdin);
-    //SSL_write(ssl, t_buff, BUFLEN);
-    int te = 1;
     while (1) {
 
 
@@ -145,10 +113,10 @@ int main (int argc, char **argv) {
                 close(conn_sock);
                 exit(0);
             }
-            strcat(s_send,s_buff);
+            //strcat(s_send,s_buff);
 
-            err = SSL_write(ssl, s_send, BUFLEN);
-            //send(conn_sock,s_buff, strlen(s_buff),0);
+            err = SSL_write(ssl, s_buff, BUFLEN);
+
         }
 
 
@@ -182,8 +150,6 @@ void connect_init(int *conn_sock, struct sockaddr_in *server, int port, char *ho
         fprintf(stderr, "Unknown server address\n");
         exit(1);
     }
-    //bcopy (hp->h_addr, (char *)&server->sin_addr, hp->h_length);
-    //memset(server->sin_zero, '\0', sizeof server->sin_zero);
     // Connecting to the server
     if (connect (*conn_sock, (struct sockaddr *)server, sizeof(*server)) == -1)
     {
