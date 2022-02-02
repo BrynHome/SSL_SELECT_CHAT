@@ -91,7 +91,7 @@ int main (int argc, char **argv) {
     long res;
     if (SSL_get_peer_certificate(ssl) != NULL) {
         if ((res = SSL_get_verify_result(ssl)) != X509_V_OK) {
-            //berr_exit("Could not verify peer certificate\n");
+            berr_exit("Could not verify peer certificate\n");
             printf("Note: Could not verify peer certificate: %ld \n", res);
         }
     } else {
