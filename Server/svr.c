@@ -42,7 +42,7 @@
 // Function Prototypes
 static void SystemFatal(const char* );
 void connection_init(int *sockfd, struct sockaddr_in *server, int port);
-void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx,SSL *clients[], int c[], int *maxi);
+void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx,SSL *clients[], int c[],struct sockaddr_in client_addrs[], int *maxi);
 void send_receive(fd_set *start, int sockfd, int *maxfd, int i,struct sockaddr_in *client, SSL *clients[], int c[],int *maxi,SSL *ssl);
 
 static int  s_server_session_id_context = 1;
@@ -52,6 +52,7 @@ int main (int argc, char **argv)
     fd_set start, read;
 	int i, maxi, port, maxfd, client[FD_SETSIZE];
     SSL *clients[FD_SETSIZE];
+    struct sockaddr_in client_addresses[FD_SETSIZE];
 	int sockfd= 0;
     int loop_sock;
     socklen_t client_len;
@@ -95,7 +96,7 @@ int main (int argc, char **argv)
             if(FD_ISSET(sockfd,&read))
             {
 
-                    new_connection(&start, &client_addr, &maxfd, sockfd, ctx, clients, client, &maxi);
+                    new_connection(&start, &client_addr, &maxfd, sockfd, ctx, clients, client,client_addresses, &maxi);
 
 
             }else
@@ -106,7 +107,7 @@ int main (int argc, char **argv)
                         continue;
                     if(FD_ISSET(loop_sock, &read))
                     {
-                        send_receive(&start, sockfd, &maxfd, i, &client_addr, clients, client,&maxi, clients[i]);
+                        send_receive(&start, sockfd, &maxfd, i, &client_addresses[i], clients, client,&maxi, clients[i]);
                     }
 
                 }
@@ -148,7 +149,7 @@ void connection_init(int *sockfd, struct sockaddr_in *server, int port)
     fflush(stdout);
 }
 
-void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx, SSL *clients[], int c[], int *maxi)
+void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int sockfd, SSL_CTX *ctx, SSL *clients[], int c[],struct sockaddr_in client_addrs[], int *maxi)
 {
     socklen_t client_len = sizeof(*client);
     int new_sd,i;
@@ -168,6 +169,7 @@ void new_connection(fd_set *start, struct sockaddr_in *client, int *maxfd, int s
         if (!clients[i] && c[i] != -1){
             clients[i] = ssl;
             c[i] = new_sd;
+            client_addrs[i] = *client;
             break;
         }
     }
