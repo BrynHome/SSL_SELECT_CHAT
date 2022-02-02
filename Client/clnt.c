@@ -21,15 +21,29 @@ void * doRecieving(void * sockID){
 
     SSL *ssl = (SSL *) sockID;
     char *bp;
+    int n;
     struct timeval timeout;
     int rec, count = 0;
     while(1) {
 
         char r_buff[BUFLEN];
         bp = r_buff;
-        SSL_read(ssl, bp, BUFLEN);
-        printf("%s\n", r_buff);
-        fflush(stdout);
+        n = SSL_read(ssl, bp, BUFLEN);
+        switch (SSL_get_error(ssl,n)) {
+            case SSL_ERROR_NONE:
+                printf("%s\n", r_buff);
+                fflush(stdout);
+                break;
+            case SSL_ERROR_ZERO_RETURN:
+                SSL_shutdown(ssl);
+                SSL_free(ssl);
+                berr_exit("SSL zero ret");
+                break;
+            default:
+                berr_exit("SSL read err. Server may have shut down");
+                break;
+        }
+
     }
 
 
