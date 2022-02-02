@@ -219,7 +219,7 @@ void send_receive(fd_set *start, int sockfd, int *maxfd, int i, struct sockaddr_
                 c[i] = -1;
                 FD_CLR(i,start);
                 //(*maxfd)--;
-
+                return;
                 break;
             } else{
                 clients[i] = NULL;
@@ -227,6 +227,7 @@ void send_receive(fd_set *start, int sockfd, int *maxfd, int i, struct sockaddr_
                 FD_CLR(i,start);
                 printf(" Remote Address:  %s closed connection\n", inet_ntoa(client->sin_addr));
                 //berr_exit("SSL read problem");
+                return;
             }
 
 
